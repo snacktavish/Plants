@@ -16,7 +16,7 @@ class Chromosome:
        for num,lii in enumerate(fi):
           lin=lii.strip().split('\t')
           snp=lin[1]
-          if len({x.strip('/') for x in lin[2:] if x != './'})==2:
+          if len({x.strip('/') for x in lin[2:] if x not in ['./','./.']})==2:
             if num==0:
                 self.chrm=lin[0]
             self.snplist.append(snp)
@@ -28,7 +28,7 @@ class Chromosome:
 #            print("Snp %s has more than 2 nucleotides" %snp) 
             self.multihit.append(snp)  
           if num%1000000==0:
-            print("%i million" %num/1000000)
+            print(num)
  #      self.tripletest()
   def translate(self,ref,val): #this is setting allele in refernce as 0
     assert ref in ['A','T','G','C'], "ref is not a base: %s" %ref
