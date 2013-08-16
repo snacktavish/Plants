@@ -1,6 +1,8 @@
 #import sys
 #from __future__ import print_function
-class Chromosome:
+import matplotlib.pyplot as plt
+import gzip
+from subprocess import call
   def __init__(self,infii):
        self.infile=infii
        fi=open(infii)
@@ -100,17 +102,21 @@ class Chromosome:
       outfi.write('\n')
     outfi.close()
 
-a=Chromosome('testdata.txt')
 
-c=Chromosome('demo_data.txt')
 
-c.export_fphase('demotest.inp')
-#./fastPHASE_MacOSX-Darwin -n -B -T10 -oDemo demotest.inp
+def runner(infile,prefix):
+   phasefi="%s.inp" %prefix
+   c=Chromosome(infile)
+   c.export_fphase(phasefi)
+   call(["./fastPHASE_MacOSX-Darwin", "-n", "-B", "-T10", "-o%s" %prefix, phasefi])
+   c.import_fphase('%s_haplotypes.out' %prefix)
+   c.export_chromop("%s.chrominp" %prefix)
+   call(["perl", "makeuniformrecfile.pl", "%s.chrominp" %prefix, "%s.recombfile" %prefix])
+#   call(["./chromopainter-0.0.4/chromopainter", "-g", "%s.chrominp" %prefix, "-r", "%s.recombfile" %prefix, "-a", "0", "0", "-in"])
+   call(["./chromopainter-0.0.4/chromopainter", "-g", "%s.chrominp" %prefix, "-r", "%s.recombfile" %prefix, "-a", "0", "0", "-in","-i","10", "-j"])
+   return(c)
 
-c.import_fphase('Demo_haplotypes.out')
-
-c.export_chromop("test.chrominp")
-#perl makeuniformrecfile.pl ../test.chrominp ../Demo.recombfile
+c=runner("demo2.txt", "demo2")
 
 #b=Chromosome('new_data.txt')
 #b.export_fphase('bigtest.inp')
@@ -118,3 +124,42 @@ c.export_chromop("test.chrominp")
 #a.export_fphase("test.inp")
 
 #a.tripletest()
+
+
+
+linesections={}
+for chrm in copyprob_dict:
+   linesections[chrm]={}
+
+for chrm in [3,4]:
+  for hap in range(1,1427):
+    linesections[chrm][hap]=[]
+    if hap%2==0:
+        yco=hap-0.25
+    else:
+      yco=hap+0.25
+    y=[yco,yco]
+    dat=copyprob_dict[chrm][str(hap)]
+    col=colors(dat[0].split()[1])
+    i=dat[0].split()[0]
+    count=0
+    for lin in dat:
+      lii=lin.split()
+      oldcol=col
+      col=colors(lii[1])
+      count+=1
+      if col!= oldcol:
+         x=[i,lii[0]]
+         linesections[chrm][hap].append([x,y,oldcol,count])
+         i=lii[0]
+         count=0
+    x=[i,dat[-1].split()[0]]
+    linesections[chrm][hap].append([x,y,oldcol,count])
+
+def painter(a,b,chrm,outfile):
+    fig = plt.figure()
+    pylab.ylim([a,b])
+    for hap in range(a,b):
+            for item in linesections[chrm][hap]:
+                plt.plot(item[0],item[1],item[2][0], linewidth=1.5)
+    plt.savefig("../%s"%outfile)
