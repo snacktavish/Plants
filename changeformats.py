@@ -147,13 +147,13 @@ class Chromosome:
         fig = plt.figure()
         ax = fig.add_subplot(111)
         ax.set_ylim([0,self.numinds+1])
-        ax.set_xlim([-150,int(self.snplist[-1])])
+        ax.set_xlim([-1500000,int(self.snplist[-1])])
         for hap in range(0,self.numinds):
             for item in self.linesections[hap]:
               if item[-1]>20:
                      ax.plot(item[0],item[1],color=item[2], linewidth=4)
-            ax.plot([-150,0],item[1],color=self.colors(hap), linewidth=4)
-            ax.text(-150,hap,self.indivs[hap])
+            ax.plot([-1500000,0],item[1],color=self.colors(hap), linewidth=4)
+            ax.text(-1500000,hap,self.indivs[hap])
         fig.savefig("%sh%i.pdf"%(outfile,hap))
 
 
