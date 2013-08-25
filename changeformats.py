@@ -1,8 +1,8 @@
-#import sys
-#from __future__ import print_function
 import matplotlib.pyplot as plt
+import matplotlib.pylab as pylab
 import gzip
 from subprocess import call
+class Chromosome:
   def __init__(self,infii):
        self.infile=infii
        fi=open(infii)
@@ -101,6 +101,62 @@ from subprocess import call
         outfi.write(self.impgenos[ind][snp])
       outfi.write('\n')
     outfi.close()
+  def import_copyprobs(self,infile):
+    try: 
+      call(["gunzip",infile])
+    except: 
+      pass
+    self.copyprob_dict={}
+    fi=open(infile[:-3])
+    for i,lin in enumerate(fi):
+      if i==0: pass
+      elif lin.startswith('HAP'):
+         hap=int(lin.split()[-1])-1
+         self.copyprob_dict[hap]=[]
+      else:
+         lii=lin.split()
+         indice=lii.index(max(lii[1:]))
+         self.copyprob_dict[hap].append((lii[0],indice))
+  def colors(self,val):
+      from pylab import get_cmap
+      NUM_COLORS = 30
+      cm = get_cmap('Accent')
+      color = cm(1.*val/NUM_COLORS)  # color will now be an RGBA tuple
+      return(color)
+  def painter_prep(self):
+    self.linesections={}
+    for hap in range(0,self.numinds):
+        self.linesections[hap]=[]
+        y=[int(hap),int(hap)]
+        dat=self.copyprob_dict[hap]
+        col=self.colors(dat[0][1]) #gets first hap
+        loc=int(self.snplist[-1])
+        count=0
+        for indix,tup in enumerate(dat):
+           oldcol=col
+           col=self.colors(tup[1])
+           count+=1
+           if col!= oldcol:
+              x=[loc,int(self.snplist[-indix])]
+              self.linesections[hap].append([x,y,oldcol,count])
+              loc=int(self.snplist[-indix])
+              count=0
+        x=[loc,int(self.snplist[0])]
+        self.linesections[hap].append([x,y,oldcol,count])
+  def paint(self,outfile):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.set_ylim([0,self.numinds+1])
+        ax.set_xlim([-150,int(self.snplist[-1])])
+        for hap in range(0,self.numinds):
+            for item in self.linesections[hap]:
+              if item[-1]>20:
+                     ax.plot(item[0],item[1],color=item[2], linewidth=4)
+            ax.plot([-150,0],item[1],color=self.colors(hap), linewidth=4)
+            ax.text(-150,hap,self.indivs[hap])
+        fig.savefig("%sh%i.pdf"%(outfile,hap))
+
+
 
 
 
@@ -113,18 +169,60 @@ def runner(infile,prefix):
    c.export_chromop("%s.chrominp" %prefix)
    call(["perl", "makeuniformrecfile.pl", "%s.chrominp" %prefix, "%s.recombfile" %prefix])
 #   call(["./chromopainter-0.0.4/chromopainter", "-g", "%s.chrominp" %prefix, "-r", "%s.recombfile" %prefix, "-a", "0", "0", "-in"])
-   call(["./chromopainter-0.0.4/chromopainter", "-g", "%s.chrominp" %prefix, "-r", "%s.recombfile" %prefix, "-a", "0", "0", "-in","-i","10", "-j"])
+   call(["./chromopainter-0.0.4/chromopainter", "-g", "%s.chrominp" %prefix, "-r", "%s.recombfile" %prefix, "-a", "0", "0", "-in","-iM","-i","10", "-j", "-b"])
+   c.import_copyprobs("%s.chrominp.copyprobsperlocus.out.gz" %prefix)
+   c.painter_prep()
+   c.paint(prefix)
    return(c)
+  
 
-c=runner("demo2.txt", "demo2")
+c=runner("demo_data.txt", "demo_mini")
+
+
+b=Chromosome('new_data.txt')
+prefix="chrm1"
+b.import_copyprobs("%s.chrominp.copyprobsperlocus.out.gz" %prefix)
+b.painter_prep()
+b.paint(prefix)
+
 
 #b=Chromosome('new_data.txt')
 #b.export_fphase('bigtest.inp')
-
 #a.export_fphase("test.inp")
-
 #a.tripletest()
 
+
+
+
+c=runner("demo_data.txt", "demo_mini")
+
+
+
+c=Chromosome("")
+c.import_copyprobs("%s.chrominp.copyprobsperlocus.out.gz" %prefix)
+c.painter("demo2")
+
+
+
+
+
+
+copyprob_dict={}
+for chrm in range(1,5):
+   copyprob_dict[chrm]={}
+   fi=gzip.open("Gdonor_chrm%i.copyprobsperlocus.out.gz"%chrm).readlines()
+   i=1
+   hap=1
+   while i< len(fi):
+    lin=fi[i]
+    if lin.startswith('HAP'):
+        hap=lin.split()[-1]
+        i+=1
+        copyprob_dict[chrm][hap]=[]
+    else:
+        copyprob_dict[chrm][hap].append(lin)
+        i+=1
+        yco=0
 
 
 linesections={}
@@ -163,3 +261,4 @@ def painter(a,b,chrm,outfile):
             for item in linesections[chrm][hap]:
                 plt.plot(item[0],item[1],item[2][0], linewidth=1.5)
     plt.savefig("../%s"%outfile)
+
