@@ -33,7 +33,7 @@ class Chromosome:
             self.multihit.append(snp)  
           if num%1000000==0:
             print(num)
- #      self.tripletest()
+       self.tripletest()
   def translate(self,ref,val): #this is setting allele in refernce as 0
     assert ref in ['A','T','G','C'], "ref is not a base: %s" %ref
     assert val in ['A','T','G','C','.'], "val is not an acceptable value: %s" %val #do I need a test for  
@@ -61,13 +61,20 @@ class Chromosome:
           fi.write('?')
       fi.write('\n')
   def tripletest(self):
+    self.triples=[]
     for snp in self.snplist:
       snpset=set()
       for ind in self.indivs:
-        snpset.add(self.genos[self.indivs[ind]][snp])
+        snpset.add(self.genos[ind][snp])
     snpset.discard('?')
     if len(snpset) >2:
-        print("Snp %i has more than 2 nucleotides" %snp)   
+        self.triples.append(snp)
+        print("Snp %i has more than 2 nucleotides" %snp)
+    for ind in self.indivs:
+        for snp in self.triples:
+          if snp in genos[ind]:
+              del self.genos[ind][snp]
+          snplist.remove(snp)
   def import_fphase(self,haplofile):
        self.impgenos=dict.fromkeys(range(len(self.genos)),None)
        for item in self.impgenos: 
@@ -88,18 +95,18 @@ class Chromosome:
                       print("%i indiv %s snp %s nuc %s raw %s"  %(i, indiv, snp, nuc, self.genos[indiv][self.snplist[snp]]))
                       print(lin)
   def trans(self,snp,val): #Same as ref = 0, alt=2
-        assert(set([ref_dict[snp],val]).issubset(set(['A','T','G','C'])))
-        if ref_dict[snp]==val
+        assert(set([self.ref_dict[snp],val]).issubset(set(['A','T','G','C'])))
+        if self.ref_dict[snp]==val:
                    return('0')
         else:
-                   return('2')
+                    return('2')
   def export_EIG(self,outstr,group='None'):
         snpfi=open("eig/"+outstr+'.snp','w')
         goufi=open("eig/"+outstr+'.geno','w')
         indfi=open("eig/"+outstr+'.ind','w')
         for ind in self.impgenos:
-          for snp in snplist:
-                gen=trans(self.impgenos[ind][snp])
+          for snp in self.impgenos[ind]:
+                gen=self.trans(snp,self.impgenos[ind][snp])
                 goufi.write(snp+' '+ind+' '+gen+'\n')
         goufi.close()
         for ind in indivs:
@@ -188,6 +195,9 @@ class Chromosome:
         print("DOUBLE CHECK THESE COLOU?RS")
 
 
+c=Chromosome("big_demo.txt")
+c.import_fphase('%s_haplotypes.out' %prefix)
+c.export_EIG(prefix)
 
 
 
@@ -199,7 +209,6 @@ def runner(infile,prefix):
    c.import_fphase('%s_haplotypes.out' %prefix)
    c.export_chromop("%s.chrominp" %prefix)
    call(["perl", "makeuniformrecfile.pl", "%s.chrominp" %prefix, "%s.recombfile" %prefix])
-#   call(["./chromopainter-0.0.4/chromopainter", "-g", "%s.chrominp" %prefix, "-r", "%s.recombfile" %prefix, "-a", "0", "0", "-in"])
    call(["./chromopainter-0.0.4/chromopainter", "-g", "%s.chrominp" %prefix, "-r", "%s.recombfile" %prefix, "-a", "0", "0", "-in","-iM","-i","10", "-j", "-b"])
    c.import_copyprobs("%s.chrominp.copyprobsperlocus.out.gz" %prefix)
    c.painter_prep()
@@ -211,9 +220,12 @@ def runner(infile,prefix):
     os.system(runner)
     os.system("perl ../EIG4.2/bin/ploteig -i eig/%s.evec -p ../EIG4.2/POPGEN/regions.txt  -x -o eig/%s.xtxt"%(outstr,outstr)) 
 
-c=runner("demo_data.txt", "demo_mini")
+c=runner("big_demo.txt", "demo_big")
 
+c.export_EIG(prefix)
 
+c=Chromosome("big_demo.txt")
+  
 b=Chromosome('new_data.txt')
 prefix="chrm1"
 b.import_copyprobs("%s.chrominp.copyprobsperlocus.out.gz" %prefix)
