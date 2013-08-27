@@ -15,16 +15,16 @@ class Chromosome:
           self.genos[item]={}
        self.snplist=[]
        self.nsnp=0
-       ref_dict={}
+       self.ref_dict={}
        for num,lii in enumerate(fi):
           lin=lii.strip().split('\t')
           snp=lin[1]
+          if num==0:
+                self.chrm=lin[0].split('_')[-1]
           if len({x.strip('/') for x in lin[2:] if x not in ['./','./.']})==2:
-            if num==0:
-                self.chrm=lin[0]
             self.snplist.append(snp)
             ref=lin[2]
-            ref_dict[snp]=ref
+            self.ref_dict[snp]=ref
             for ii,item in enumerate(lin[3:]):
                 self.genos[ii][snp]=self.translate(ref,item.split('/')[0])
             self.nsnp+=1
@@ -107,15 +107,15 @@ class Chromosome:
         for ind in self.impgenos:
           for snp in self.impgenos[ind]:
                 gen=self.trans(snp,self.impgenos[ind][snp])
-                goufi.write(snp+' '+ind+' '+gen+'\n')
+                goufi.write(snp+' '+str(ind)+' '+gen+'\n')
         goufi.close()
-        for ind in indivs:
+        for ind in self.indivs:
             if group=='None':
-              indfi.write(ind+'\tF\t'+indiv[ind]+'\n')#by region      
+              indfi.write(str(ind)+'\tF\t'+self.indivs[ind]+'\n')#by region      
         indfi.close()
-        for snp in snplist:
+        for snp in self.snplist:
             chrm=self.chrm
-            snpfi.write(" ".join([snp,chrm,'0.0',snp])+'\n') #pulls outsnp number, chrm, dummy recombination distance, lcoaction
+            snpfi.write(" ".join([snp,str(chrm),'0.0',snp])+'\n') #pulls outsnp number, chrm, dummy recombination distance, lcoaction
         snpfi.close()
         par=open("eig/par.example",'r')
         opar=open('eig/par.'+outstr,'w')
@@ -214,11 +214,10 @@ def runner(infile,prefix):
    c.painter_prep()
    c.paint(prefix)
    return(c)
- 
-    runner="../EIG4.2/bin/smartpca -p eig/par.%s"%outstr
-    print(runner)
-    os.system(runner)
-    os.system("perl ../EIG4.2/bin/ploteig -i eig/%s.evec -p ../EIG4.2/POPGEN/regions.txt  -x -o eig/%s.xtxt"%(outstr,outstr)) 
+   runner="../EIG4.2/bin/smartpca -p eig/par.%s"%outstr
+   print(runner)
+   os.system(runner)
+   os.system("perl ../EIG4.2/bin/ploteig -i eig/%s.evec -p ../EIG4.2/POPGEN/regions.txt  -x -o eig/%s.xtxt"%(outstr,outstr)) 
 
 c=runner("big_demo.txt", "demo_big")
 
