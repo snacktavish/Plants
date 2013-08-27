@@ -15,6 +15,7 @@ class Chromosome:
           self.genos[item]={}
        self.snplist=[]
        self.nsnp=0
+       ref_dict={}
        for num,lii in enumerate(fi):
           lin=lii.strip().split('\t')
           snp=lin[1]
@@ -23,6 +24,7 @@ class Chromosome:
                 self.chrm=lin[0]
             self.snplist.append(snp)
             ref=lin[2]
+            ref_dict[snp]=ref
             for ii,item in enumerate(lin[3:]):
                 self.genos[ii][snp]=self.translate(ref,item.split('/')[0])
             self.nsnp+=1
@@ -85,6 +87,34 @@ class Chromosome:
                  else:
                       print("%i indiv %s snp %s nuc %s raw %s"  %(i, indiv, snp, nuc, self.genos[indiv][self.snplist[snp]]))
                       print(lin)
+  def trans(self,snp,val): #Same as ref = 0, alt=2
+        assert(set([ref_dict[snp],val]).issubset(set(['A','T','G','C'])))
+        if ref_dict[snp]==val
+                   return('0')
+        else:
+                   return('2')
+  def export_EIG(self,outstr,group='None'):
+        snpfi=open("eig/"+outstr+'.snp','w')
+        goufi=open("eig/"+outstr+'.geno','w')
+        indfi=open("eig/"+outstr+'.ind','w')
+        for ind in self.impgenos:
+          for snp in snplist:
+                gen=trans(self.impgenos[ind][snp])
+                goufi.write(snp+' '+ind+' '+gen+'\n')
+        goufi.close()
+        for ind in indivs:
+            if group=='None':
+              indfi.write(ind+'\tF\t'+indiv[ind]+'\n')#by region      
+        indfi.close()
+        for snp in snplist:
+            chrm=self.chrm
+            snpfi.write(" ".join([snp,chrm,'0.0',snp])+'\n') #pulls outsnp number, chrm, dummy recombination distance, lcoaction
+        snpfi.close()
+        par=open("eig/par.example",'r')
+        opar=open('eig/par.'+outstr,'w')
+        for lin in par.readlines():
+             opar.write(lin.replace('example',outstr))
+        opar.close()
   def export_chromop(self,outfile):
     import math
     outfi=open(outfile,'w')
@@ -129,20 +159,20 @@ class Chromosome:
         self.linesections[hap]=[]
         y=[int(hap),int(hap)]
         dat=self.copyprob_dict[hap]
-        col=self.colors(dat[0][1]) #gets first hap
+        line=dat[0][1] #gets first hap
         loc=int(self.snplist[-1])
         count=0
         for indix,tup in enumerate(dat):
-           oldcol=col
-           col=self.colors(tup[1])
+           oldline=line
+           line=tup[1]
            count+=1
-           if col!= oldcol:
+           if line!= oldline:
               x=[loc,int(self.snplist[-indix])]
-              self.linesections[hap].append([x,y,oldcol,count])
+              self.linesections[hap].append([x,y,oldline,count])
               loc=int(self.snplist[-indix])
               count=0
         x=[loc,int(self.snplist[0])]
-        self.linesections[hap].append([x,y,oldcol,count])
+        self.linesections[hap].append([x,y,oldline,count])
   def paint(self,outfile):
         fig = plt.figure()
         ax = fig.add_subplot(111)
@@ -151,10 +181,11 @@ class Chromosome:
         for hap in range(0,self.numinds):
             for item in self.linesections[hap]:
               if item[-1]>20:
-                     ax.plot(item[0],item[1],color=item[2], linewidth=4)
+                     ax.plot(item[0],item[1],color=self.colors(item[2]), linewidth=4)
             ax.plot([-1500000,0],item[1],color=self.colors(hap), linewidth=4)
             ax.text(-1500000,hap,self.indivs[hap])
         fig.savefig("%sh%i.pdf"%(outfile,hap))
+        print("DOUBLE CHECK THESE COLOU?RS")
 
 
 
@@ -174,7 +205,11 @@ def runner(infile,prefix):
    c.painter_prep()
    c.paint(prefix)
    return(c)
-  
+ 
+    runner="../EIG4.2/bin/smartpca -p eig/par.%s"%outstr
+    print(runner)
+    os.system(runner)
+    os.system("perl ../EIG4.2/bin/ploteig -i eig/%s.evec -p ../EIG4.2/POPGEN/regions.txt  -x -o eig/%s.xtxt"%(outstr,outstr)) 
 
 c=runner("demo_data.txt", "demo_mini")
 
