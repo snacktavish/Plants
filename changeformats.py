@@ -94,6 +94,23 @@ class Chromosome:
                  else:
                       print("%i indiv %s snp %s nuc %s raw %s"  %(i, indiv, snp, nuc, self.genos[indiv][self.snplist[snp]]))
                       print(lin)
+  def export_nexus(self,filename,imp=True):
+      assert(self.impgenos)
+      nexfi=open(filename,'w')
+      nexfi.write("#nexus\nbegin data;\n")
+      nexfi.write("dimensions ntax={ntax} nchar={nchar};\n".format(ntax=self.numinds,nchar=len(self.snplist)))
+      nexfi.write("format datatype=dna interleave=no gap=- missing=?;\n")
+      nexfi.write("Matrix\n")
+      if imp==True:
+        dat=self.impgenos
+      else:
+       dat=self.genos
+      for item in dat:
+        nexfi.write("{0: <16}".format(self.indivs[item]))
+        for snp in self.snplist:
+          nexfi.write(dat[item][snp])
+        nexfi.write('\n')
+      nexfi.write(';\nend;\n')
   def trans(self,snp,val): #Same as ref = 0, alt=2
         assert(set([self.ref_dict[snp],val]).issubset(set(['A','T','G','C'])))
         if self.ref_dict[snp]==val:
@@ -197,6 +214,8 @@ class Chromosome:
 
 c=Chromosome("big_demo.txt")
 c.import_fphase('%s_haplotypes.out' %prefix)
+c.export_nexus('test.nex')
+
 c.export_EIG(prefix)
 
 
