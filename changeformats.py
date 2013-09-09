@@ -246,7 +246,13 @@ c=Chromosome("big_demo.txt")
   
 b=Chromosome('new_data.txt')
 prefix="chrm1"
+b.import_fphase('%s_haplotypes.out' %prefix)
+b.export_nexus("chrm1.nex")
+
 b.import_copyprobs("%s.chrominp.copyprobsperlocus.out.gz" %prefix)
+
+
+
 b.painter_prep()
 b.paint(prefix)
 
