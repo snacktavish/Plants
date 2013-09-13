@@ -9,6 +9,8 @@ class Chromosome:
        header=fi.readline().split()
        self.numinds=len(header[3:])
        self.indivs={index:elem for index, elem in enumerate(header[3:])}
+       self.rev_indivs={elem:index for index, elem in enumerate(header[3:])}
+       self.indlist=self.rev_indivs.keys()
        self.genos=dict.fromkeys(range(len(header[3:])),None)
        self.multihit=[]
        for item in self.genos: 
@@ -139,13 +141,25 @@ class Chromosome:
         for lin in par.readlines():
              opar.write(lin.replace('example',outstr))
         opar.close()
-  def export_chromop(self,outfile):
+  def export_chromop(self,prefix,donor=0):
     import math
-    outfi=open(outfile,'w')
+    outfi=open(prefix+chrominp,'w')
     outfi.write('0\n')
     outfi.write(str(self.numinds)+'\n')
     outfi.write(str(len(self.snplist))+'\n')
     outfi.write('P')
+    if donor:
+      assert type(donor)==dict
+      dfi=open(prefix+"dlist",'w')
+      new_indlist=[]
+      for pop in donor:
+          dfi.write(" ".join([pop,len(donor[pop])])
+          for ind in pop:
+            new_indlist.append(ind)
+      for item in self.indlist:
+          if item not in new_indlist:
+            new_indlist.append(item)
+
     for item in self.snplist:
        outfi.write(' '+str(item))
     outfi.write('\n')
@@ -154,7 +168,7 @@ class Chromosome:
       for snp in self.impgenos[ind]:
         outfi.write(self.impgenos[ind][snp])
       outfi.write('\n')
-    outfi.close()
+    outfi.close()    
   def import_copyprobs(self,infile):
     try: 
       call(["gunzip",infile])
@@ -210,6 +224,30 @@ class Chromosome:
             ax.text(-1500000,hap,self.indivs[hap])
         fig.savefig("%sh%i.pdf"%(outfile,hap))
         print("DOUBLE CHECK THESE COLOU?RS")
+  
+
+
+
+def  parse_partitions(chrom, partfile,outfile):
+     fi=open(partfile).readlines()
+     for i,lin in enumerate(fi):
+       if lin.startswith("Ntax"):
+         end=lin.split("Nchar=")[-1].split()[0]
+       if lin.startswith("MDLscore"):
+         num=i+1
+     dat=fi[num].split()
+     dat.append(end)
+     breaks=[]
+     for item in dat[2:]:
+         breaks.append(chrom.snplist[int(item)-1])
+     ofi=open(outfile,'w')
+     ofi.write('\n'.join(breaks))
+     ofi.close()
+
+
+
+  
+
 
 
 c=Chromosome("big_demo.txt")
@@ -226,17 +264,21 @@ def runner(infile,prefix):
    c.export_fphase(phasefi)
    call(["./fastPHASE_MacOSX-Darwin", "-n", "-B", "-T10", "-o%s" %prefix, phasefi])
    c.import_fphase('%s_haplotypes.out' %prefix)
-   c.export_chromop("%s.chrominp" %prefix)
+   c.export_chromop(prefix)
    call(["perl", "makeuniformrecfile.pl", "%s.chrominp" %prefix, "%s.recombfile" %prefix])
    call(["./chromopainter-0.0.4/chromopainter", "-g", "%s.chrominp" %prefix, "-r", "%s.recombfile" %prefix, "-a", "0", "0", "-in","-iM","-i","10", "-j", "-b"])
    c.import_copyprobs("%s.chrominp.copyprobsperlocus.out.gz" %prefix)
    c.painter_prep()
    c.paint(prefix)
    return(c)
-   runner="../EIG4.2/bin/smartpca -p eig/par.%s"%outstr
-   print(runner)
-   os.system(runner)
-   os.system("perl ../EIG4.2/bin/ploteig -i eig/%s.evec -p ../EIG4.2/POPGEN/regions.txt  -x -o eig/%s.xtxt"%(outstr,outstr)) 
+
+def eigrun(chrom, prefix):
+   chrom.export_EIG(prefix)
+   call(["../EIG5.0.1/bin/smartpca", "-p", "eig/par.%s"%prefix])
+   call(["perl", "../EIG5.0.1/bin/ploteig", "-i", "eig/%s.evec"%prefix, "-p", "../EIG5.0.1/POPGEN/regions.txt", "-x", "-o", "eig/%s.xtxt"%prefix])
+
+ 
+
 
 c=runner("big_demo.txt", "demo_big")
 

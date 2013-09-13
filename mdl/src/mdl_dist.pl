@@ -23,7 +23,7 @@ $savetrees = 0;    #1=yes, 0=no.
 $dataFile = "a.nex";
 $Nsymbols = 4;     #default: DNA.
 
-$paupFileName = "paupallgroups.nex";
+$paupFileName = "paupallgroupsdist.nex";
 $treeFile = "trees.nex";
 
 #----- Read standard input -----------------------------------------#
@@ -100,7 +100,8 @@ if($doParsSearch){
 
  open FHo, ">$paupFileName";
  print FHo "#NEXUS\n\nset warnroot=no warntree=no warnTsave=no ";
- print FHo "increase=no maxtrees=$Ngroup monitor=no notifybeep=no;\n";
+ print FHo "increase=no maxtrees=10 monitor=no notifybeep=no;\n";
+ print FHo "log file=disttest.log;\n";
  print FHo "execute $dataFile;\n\n";
  print FHo "begin paup;\n";
 # if ($gap_as_character){
@@ -136,7 +137,7 @@ if($doParsSearch){
  system("$paup $paupFileName");
 
  # clean up
-# unlink($paupFileName);
+#unlink($paupFileName);
 } # end of: if($doParsSearch)
 
 
