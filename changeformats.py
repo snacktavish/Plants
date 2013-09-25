@@ -126,11 +126,11 @@ class Chromosome:
         for ind in self.impgenos:
           for snp in self.impgenos[ind]:
                 gen=self.trans(snp,self.impgenos[ind][snp])
-                goufi.write(snp+' '+str(ind)+' '+gen+'\n')
+                goufi.write(snp+' '+'ind'+str(ind)+' '+gen+'\n')
         goufi.close()
         for ind in self.indivs:
             if group=='None':
-              indfi.write(str(ind)+'\tF\t'+self.indivs[ind]+'\n')#by region      
+              indfi.write('ind'+str(ind)+'\tF\t'+self.indivs[ind]+'\n')#by region      
         indfi.close()
         for snp in self.snplist:
             chrm=self.chrm
@@ -153,13 +153,12 @@ class Chromosome:
       dfi=open(prefix+"dlist",'w')
       new_indlist=[]
       for pop in donor:
-          dfi.write(" ".join([pop,len(donor[pop])])
+          dfi.write(" ".join([pop,len(donor[pop])]))
           for ind in pop:
             new_indlist.append(ind)
       for item in self.indlist:
           if item not in new_indlist:
             new_indlist.append(item)
-
     for item in self.snplist:
        outfi.write(' '+str(item))
     outfi.write('\n')
@@ -245,9 +244,75 @@ def  parse_partitions(chrom, partfile,outfile):
      ofi.close()
 
 
+markerslis= ['o', 'v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd','1','2','3','4','8','|','_','^',r'$\bowtie$',r'$\alpha$',r'$\beta$',r'$\clubsuit$',r'$\spadesuit$',r'$\star$']
 
-  
+import matplotlib.pyplot as plt
 
+A=["1054.bam",]
+B=["SRR072711.bam", "SRR072712.bam"]
+def slider(chrom, prefix, window):
+  start=0
+  end=0
+  n=(len(chrom.snplist)/window)+1
+  fulldict={}
+  for item in chrom.rev_indivs:
+    fulldict[item]=[]
+  fulldict["ends"]=[]
+  fig=plt.figure()
+  i=0
+  while end < len(chrom.snplist):
+      print(end < len(chrom.snplist))
+      i+=1
+      print("end is")
+      print(end)
+      print("break at")
+      print(len(chrom.snplist))
+      fi=open("eig/%s.snp"%prefix).readlines()
+      end=start+window
+      del fi[start:end]
+      start=end
+      bad=open("eig/bad%s.snp"%prefix,"w")
+      for lin in fi:
+        bad.write(lin)
+      bad.close()
+#      call(["../EIG5.0.1/bin/smartpca", "-p", "eig/par.sub%s"%prefix])
+      outdict={}
+      outs=open("eig/%ssub.evec"%prefix).readlines()
+      for lin in outs[1:]:
+        outdict[lin.split()[-1]]=(float(lin.split()[1]),float(lin.split()[2]))
+      ax=fig.add_subplot(n,1,i)
+      ax.title=(str(start))
+      for item in outdict:
+        x,y=outdict[item]
+        ax.plot(x,y)
+        ax.annotate(
+        item, 
+        xy = (x, y), xytext = (-20, 20),
+        textcoords = 'offset points', ha = 'right', va = 'bottom',
+        bbox = dict(boxstyle = 'round,pad=0.5', fc = 'yellow', alpha = 0.5),
+        arrowprops = dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0'))
+  fig.savefig("tes.pdf")
+
+
+'''      avals=[]
+      bvals=[]
+      for item in A:
+        avals.append(outdict[item])
+      for item in B:
+        bvals.append(outdict[item])
+      aavg=(sum(avals)/len(avals))
+      bavg=(sum(bvals)/len(bvals))
+      if aavg<bavg:
+        aavg=aavg*-1
+        bavg=bavg*-1
+      for item in outdict:
+        if outdict[item]<bavg or outdict[item]>aavg:
+             fulldict[item].append("n/a")
+        else:
+          fulldict[item].append((outdict[item]-bavg)/(aavg-bavg))
+      fulldict["ends"].append(end)
+      return(fulldict)
+'''
 
 
 c=Chromosome("big_demo.txt")
@@ -255,7 +320,6 @@ c.import_fphase('%s_haplotypes.out' %prefix)
 c.export_nexus('test.nex')
 
 c.export_EIG(prefix)
-
 
 
 def runner(infile,prefix):
@@ -275,11 +339,11 @@ def runner(infile,prefix):
 def eigrun(chrom, prefix):
    chrom.export_EIG(prefix)
    call(["../EIG5.0.1/bin/smartpca", "-p", "eig/par.%s"%prefix])
-   call(["perl", "../EIG5.0.1/bin/ploteig", "-i", "eig/%s.evec"%prefix, "-p", "../EIG5.0.1/POPGEN/regions.txt", "-x", "-o", "eig/%s.xtxt"%prefix])
+   call(["perl", "../EIG5.0.1/bin/ploteig", "-i", "eig/%s.evec"%prefix, "-p", "eig/namesoutg.txt", "-x", "-k", "-o", "eig/%s.xtxt"%prefix])
+
 
  
-
-
+    
 c=runner("big_demo.txt", "demo_big")
 
 c.export_EIG(prefix)
