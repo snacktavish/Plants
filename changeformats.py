@@ -244,54 +244,91 @@ def  parse_partitions(chrom, partfile,outfile):
      ofi.close()
 
 
-markerslis= ['o', 'v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd','1','2','3','4','8','|','_','^',r'$\bowtie$',r'$\alpha$',r'$\beta$',r'$\clubsuit$',r'$\spadesuit$',r'$\star$']
+markerslis= ['o', 'v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd','1','2','3','4','8','^',r'$\alpha$',r'$\beta$',r'$\clubsuit$',r'$\spadesuit$',r'$\star$']
+colorslis=['red','blue','green','black']
+
+for item in 
 
 import matplotlib.pyplot as plt
 
 A=["1054.bam",]
 B=["SRR072711.bam", "SRR072712.bam"]
+
+
 def slider(chrom, prefix, window):
+  markerslis= [r'$\spadesuit$',r'$\star$', r'$\spadesuit$', r'$\clubsuit$','o', 'v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd','1','2','3','4','8','^']
+  singmarks=[r'$\gamma$', r'$\sigma$',r'$\infty$',r'$\alpha$',r'$\beta$',r'$\Theta$', r'$\Xi$', r'$\Phi$',r'$\$$', r'$\#$', r'$\%$', r'$\S$',r'$A$',r'$B$',r'$C$',r'$D$',r'$E$',r'$F$']
+  colorslis=['red','green','black','orange','pink']
+  symdict={}
+  for ind,sym in zip(chrom.rev_indivs,zip(markerslis+singmarks+markerslis,colorslis*15)):
+     symdict[ind]=sym
   start=0
   end=0
-  n=(len(chrom.snplist)/window)+1
+  n=(len(chrom.snplist)/window)+2
   fulldict={}
   for item in chrom.rev_indivs:
     fulldict[item]=[]
   fulldict["ends"]=[]
-  fig=plt.figure()
+  fig=plt.figure(figsize=(5,n*5))
   i=0
   while end < len(chrom.snplist):
       print(end < len(chrom.snplist))
       i+=1
       print("end is")
       print(end)
-      print("break at")
-      print(len(chrom.snplist))
       fi=open("eig/%s.snp"%prefix).readlines()
       end=start+window
       del fi[start:end]
       start=end
+      try:
+        endloc=chrom.snplist[end]
+      except:
+        endloc=chrom.snplist[-1]
       bad=open("eig/bad%s.snp"%prefix,"w")
       for lin in fi:
         bad.write(lin)
       bad.close()
-#      call(["../EIG5.0.1/bin/smartpca", "-p", "eig/par.sub%s"%prefix])
+      call(["../EIG5.0.1/bin/smartpca", "-p", "eig/par.sub%s"%prefix])
       outdict={}
       outs=open("eig/%ssub.evec"%prefix).readlines()
       for lin in outs[1:]:
         outdict[lin.split()[-1]]=(float(lin.split()[1]),float(lin.split()[2]))
-      ax=fig.add_subplot(n,1,i)
-      ax.title=(str(start))
+      ax=fig.add_subplot(n,1,i+1)
+      ax.set_title=(str(start))
+      ax.set_xlim(-0.75,0.75)
+      ax.set_ylim(-0.75,0.75)
+      ax.text(-0.5,0.45,endloc)
       for item in outdict:
         x,y=outdict[item]
-        ax.plot(x,y)
-        ax.annotate(
-        item, 
-        xy = (x, y), xytext = (-20, 20),
-        textcoords = 'offset points', ha = 'right', va = 'bottom',
-        bbox = dict(boxstyle = 'round,pad=0.5', fc = 'yellow', alpha = 0.5),
-        arrowprops = dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0'))
-  fig.savefig("tes.pdf")
+        ax.plot(x,y,marker=symdict[item][0],color=symdict[item][1],alpha=0.6)
+  keyz=fig.add_subplot(n,1,1)
+  keyz.set_xlim(0.5,10)
+  keyz.set_ylim(-5,5+(len(outdict.keys()))/3)
+  for e,item in enumerate(outdict):
+      if e<=(len(outdict.keys())/3):
+            keyz.plot(1,e,marker=symdict[item][0],color=symdict[item][1])
+            keyz.text(1.5,e,item, fontsize=6)
+      elif (len(outdict.keys())/3)<e<=2*(len(outdict.keys())/3):
+            keyz.plot(3,0.5+(e-(len(outdict.keys())/3)),marker=symdict[item][0],color=symdict[item][1])
+            keyz.text(3.5,0.5+(e-(len(outdict.keys())/3)),item, fontsize=6)
+      else:
+            keyz.plot(6,0.5+(e-(2*(len(outdict.keys())/3))),marker=symdict[item][0],color=symdict[item][1])
+            keyz.text(6.5,0.5+(e-(2*(len(outdict.keys())/3))),item, fontsize=6)
+  fig.tight_layout()
+  fig.savefig("%s.pdf"%prefix)
+
+
+
+def subset_inds(chrom,keeplis):
+    x=chrom
+    for item in chrom.rev_indivs.keys():
+      if item not in keeplis:
+        indnum=x.rev_indivs[item]
+        del x.genos[indnum]
+        del x.impgenos[indnum]
+        del x.indivs[indnum]
+        del x.rev_indivs[item]
+    return(x)
 
 
 '''      avals=[]
