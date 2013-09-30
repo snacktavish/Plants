@@ -244,6 +244,28 @@ def  parse_partitions(chrom, partfile,outfile):
      ofi.close()
 
 
+
+def strip_missing(self,snpcutoff,indcutoff):
+  snpcount={snp:0 for snp in self.snplist}
+  for ind in self.genos:
+    for snp in self.genos[ind]:
+      if self.genos[ind][snp]!='?':
+       snpcount[snp]+=1
+  snpdel=[snpcount[snp] for snp in snpcount if snpcount[snp]<snpcutoff*len(self.indivs)]
+  pruned_genos={ind:{snp:self.genos[ind][snp]} for ind in self.genos for snp in self.genos[ind] if snp not in snpdel}
+  return(pruned_genos)
+
+
+  for ind in self.genos:
+    for snp in self.genos[ind]:
+      if snp not in snpdel:
+        pruned_genos[ind][snp]=self.genos[ind][snp]
+  for ind in self.genos:
+      for snp in self.genos[ind]:
+         if 
+  return(pruned_genos)
+      
+
 markerslis= ['o', 'v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd','1','2','3','4','8','^',r'$\alpha$',r'$\beta$',r'$\clubsuit$',r'$\spadesuit$',r'$\star$']
 colorslis=['red','blue','green','black']
 
