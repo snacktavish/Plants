@@ -16,7 +16,6 @@ class Chromosome:
        for item in self.genos: 
           self.genos[item]={}
        self.snplist=[]
-       self.nsnp=0
        self.ref_dict={}
        for num,lii in enumerate(fi):
           lin=lii.strip().split('\t')
@@ -29,7 +28,6 @@ class Chromosome:
             self.ref_dict[snp]=ref
             for ii,item in enumerate(lin[3:]):
                 self.genos[ii][snp]=self.translate(ref,item.split('/')[0])
-            self.nsnp+=1
           if len({x.strip('/') for x in lin[2:] if x != './'})>2:
 #            print("Snp %s has more than 2 nucleotides" %snp) 
             self.multihit.append(snp)  
@@ -51,9 +49,9 @@ class Chromosome:
     import math
     fi=open(outfile,'w')
     fi.write(str(int(math.ceil(self.numinds/2.0)))+'\n')
-    fi.write(str(self.nsnp)+'\n')
+    fi.write(str(len(self.snplist))+'\n')
  #   fi.write(snp_locs)
-    for ind in range(len(self.genos)):
+    for ind in self.indorder:
 #       fi.write("# id %s \n" %ind)
        for snp in self.snplist:
           fi.write(self.genos[ind][snp])
@@ -78,7 +76,7 @@ class Chromosome:
               del self.genos[ind][snp]
           snplist.remove(snp)
   def import_fphase(self,haplofile):
-       self.impgenos=dict.fromkeys(range(len(self.genos)),None)
+       self.impgenos=dict.fromkeys(self.genos.keys(),None)
        for item in self.impgenos: 
           self.impgenos[item]={}
        fi=open(haplofile)
@@ -87,8 +85,8 @@ class Chromosome:
             pass
           else:
             assert len(lin.strip())==len(self.snplist)
-            indiv=i/2
-            if indiv == self.numinds:
+            indiv=self.indorder[i/2]
+            if i/2 > len(self.indivs):
               break
             for snp, nuc in enumerate(lin.strip()):
                  if self.genos[indiv][self.snplist[snp]] in [nuc,'?']:
@@ -96,6 +94,7 @@ class Chromosome:
                  else:
                       print("%i indiv %s snp %s nuc %s raw %s"  %(i, indiv, snp, nuc, self.genos[indiv][self.snplist[snp]]))
                       print(lin)
+
   def export_nexus(self,filename,imp=True):
       assert(self.impgenos)
       nexfi=open(filename,'w')
@@ -223,7 +222,58 @@ class Chromosome:
             ax.text(-1500000,hap,self.indivs[hap])
         fig.savefig("%sh%i.pdf"%(outfile,hap))
         print("DOUBLE CHECK THESE COLOU?RS")
-  
+
+
+
+
+
+
+
+def strip_missing(self,snpcutoff1,indcutoff,snpcutoff2):
+    snpcount={snp:0 for snp in self.snplist}
+    for ind in self.genos:
+         for snp in self.genos[ind]:
+          if self.genos[ind][snp]!='?':
+           snpcount[snp]+=1
+    snpdel={snp for snp in snpcount if snpcount[snp]<snpcutoff1*len(self.indivs)}
+    pruned_genos={ind:{} for ind in self.genos}
+    for ind in self.genos:
+      print(ind)
+      for snp in self.genos[ind]:
+        if snp not in snpdel:
+          pruned_genos[ind][snp]=self.genos[ind][snp]
+    indcount={ind:0 for ind in self.genos}
+    for ind in pruned_genos:
+      for snp in pruned_genos[ind]:
+        if pruned_genos[ind][snp]!='?':
+         indcount[ind]+=1
+    inddel={ind for ind in indcount if indcount[ind]<indcutoff*(len(self.snplist)-len(snpdel))}
+    print("inddel is",inddel)
+    for ind in inddel:
+      del pruned_genos[ind]
+      del self.rev_indivs[self.indivs[ind]]
+      del self.indivs[ind]
+    snpcount2={snp:0 for snp in set(self.snplist)-set(snpdel)}
+    for ind in pruned_genos:
+      for snp in pruned_genos[ind]:
+        if pruned_genos[ind][snp]!='?':
+         snpcount2[snp]+=1
+    snpdel2={snp for snp in snpcount2 if snpcount2[snp]<snpcutoff2*len(self.indivs)}
+    pruned_genos2={ind:{} for ind in pruned_genos}
+    for ind in pruned_genos:
+      print(ind)
+      for snp in pruned_genos[ind]:
+        if snp not in snpdel2:
+          pruned_genos2[ind][snp]=self.genos[ind][snp]
+    self.genos=pruned_genos2
+    self.snplist=list(set(self.snplist)-set(snpdel)-set(snpdel2))
+    self.numinds=len(pruned_genos2)
+    self.indorder=self.indivs.keys()
+    self.indorder.sort()
+
+
+
+
 
 
 
@@ -245,26 +295,24 @@ def  parse_partitions(chrom, partfile,outfile):
 
 
 
-def strip_missing(self,snpcutoff,indcutoff):
-  snpcount={snp:0 for snp in self.snplist}
-  for ind in self.genos:
-    for snp in self.genos[ind]:
-      if self.genos[ind][snp]!='?':
-       snpcount[snp]+=1
-  snpdel=[snpcount[snp] for snp in snpcount if snpcount[snp]<snpcutoff*len(self.indivs)]
-  pruned_genos={ind:{snp:self.genos[ind][snp]} for ind in self.genos for snp in self.genos[ind] if snp not in snpdel}
-  return(pruned_genos)
+
+def export_fphase(self,outfile):
+    import math
+    fi=open(outfile,'w')
+    fi.write(str(int(math.ceil(self.numinds/2.0)))+'\n')
+    fi.write(str(self.nsnp)+'\n')
+ #   fi.write(snp_locs)
+    for ind in range(len(self.genos)):
+#       fi.write("# id %s \n" %ind)
+       for snp in self.snplist:
+          fi.write(self.genos[ind][snp])
+       fi.write('\n')
+    if self.numinds%2!=0:
+      for snp in self.snplist:
+          fi.write('?')
+      fi.write('\n')
 
 
-  for ind in self.genos:
-    for snp in self.genos[ind]:
-      if snp not in snpdel:
-        pruned_genos[ind][snp]=self.genos[ind][snp]
-  for ind in self.genos:
-      for snp in self.genos[ind]:
-         if 
-  return(pruned_genos)
-      
 
 markerslis= ['o', 'v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd','1','2','3','4','8','^',r'$\alpha$',r'$\beta$',r'$\clubsuit$',r'$\spadesuit$',r'$\star$']
 colorslis=['red','blue','green','black']
@@ -278,6 +326,7 @@ B=["SRR072711.bam", "SRR072712.bam"]
 
 
 def slider(chrom, prefix, window):
+  chrom.export_EIG(prefix)
   markerslis= [r'$\spadesuit$',r'$\star$', r'$\spadesuit$', r'$\clubsuit$','o', 'v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd','1','2','3','4','8','^']
   singmarks=[r'$\gamma$', r'$\sigma$',r'$\infty$',r'$\alpha$',r'$\beta$',r'$\Theta$', r'$\Xi$', r'$\Phi$',r'$\$$', r'$\#$', r'$\%$', r'$\S$',r'$A$',r'$B$',r'$C$',r'$D$',r'$E$',r'$F$']
   colorslis=['red','green','black','orange','pink']
@@ -310,9 +359,9 @@ def slider(chrom, prefix, window):
       for lin in fi:
         bad.write(lin)
       bad.close()
-      call(["../EIG5.0.1/bin/smartpca", "-p", "eig/par.sub%s"%prefix])
+      call(["../EIG5.0.1/bin/smartpca", "-p", "eig/par.%s"%prefix])
       outdict={}
-      outs=open("eig/%ssub.evec"%prefix).readlines()
+      outs=open("eig/%s.evec"%prefix).readlines()
       for lin in outs[1:]:
         outdict[lin.split()[-1]]=(float(lin.split()[1]),float(lin.split()[2]))
       ax=fig.add_subplot(n,1,i+1)
@@ -340,10 +389,11 @@ def slider(chrom, prefix, window):
   fig.savefig("%s.pdf"%prefix)
 
 
+import copy
 
 def subset_inds(chrom,keeplis):
-    x=chrom
-    for item in chrom.rev_indivs.keys():
+    x=copy.deepcopy(chrom)
+    for item in x.rev_indivs.keys():
       if item not in keeplis:
         indnum=x.rev_indivs[item]
         del x.genos[indnum]
@@ -372,6 +422,14 @@ def subset_inds(chrom,keeplis):
       fulldict["ends"].append(end)
       return(fulldict)
 '''
+
+
+def post_proc(c,prefix):
+  phasefi="%s.inp" %prefix
+  export_fphase(c,phasefi)
+  call(["./fastPHASE_MacOSX-Darwin", "-n", "-B", "-T10", "-o%s" %prefix, phasefi])
+  import_fphase(c,'%s_haplotypes.out' %prefix)
+  slider(c,"slidetest",len(c.snplist)+5)
 
 
 c=Chromosome("big_demo.txt")
