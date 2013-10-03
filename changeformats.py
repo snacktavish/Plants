@@ -3,7 +3,8 @@ import matplotlib.pylab as pylab
 import gzip
 from subprocess import call
 class Chromosome:
-  def __init__(self,infii):
+  def __init__(self,infii,prefix):
+       self.prefix=prefix
        self.infile=infii
        fi=open(infii)
        header=fi.readline().split()
@@ -48,7 +49,7 @@ class Chromosome:
   def export_fphase(self,outfile):
     import math
     fi=open(outfile,'w')
-    fi.write(str(int(math.ceil(self.numinds/2.0)))+'\n')
+    fi.write(str(int(math.ceil(len(self.indivs)/2.0)))+'\n')
     fi.write(str(len(self.snplist))+'\n')
  #   fi.write(snp_locs)
     for ind in self.indorder:
@@ -56,7 +57,7 @@ class Chromosome:
        for snp in self.snplist:
           fi.write(self.genos[ind][snp])
        fi.write('\n')
-    if self.numinds%2!=0:
+    if len(self.indivs)%2!=0:
       for snp in self.snplist:
           fi.write('?')
       fi.write('\n')
@@ -79,20 +80,16 @@ class Chromosome:
        self.impgenos=dict.fromkeys(self.genos.keys(),None)
        for item in self.impgenos: 
           self.impgenos[item]={}
-       fi=open(haplofile)
-       for i,lin in enumerate(fi):
-          if lin.startswith('#'):
-            pass
-          else:
+       fi=open(haplofile).readlines()
+       imp=[lin for lin in fi if lin!= '# \n']
+       for i,ind in enumerate(self.indorder):
+            lin=imp[i]          
             assert len(lin.strip())==len(self.snplist)
-            indiv=self.indorder[i/2]
-            if i/2 > len(self.indivs):
-              break
             for snp, nuc in enumerate(lin.strip()):
-                 if self.genos[indiv][self.snplist[snp]] in [nuc,'?']:
-                      self.impgenos[indiv][self.snplist[snp]]=nuc
+                 if self.genos[ind][self.snplist[snp]] in [nuc,'?']:
+                      self.impgenos[ind][self.snplist[snp]]=nuc
                  else:
-                      print("%i indiv %s snp %s nuc %s raw %s"  %(i, indiv, snp, nuc, self.genos[indiv][self.snplist[snp]]))
+                      print("%i indiv %s snp %s nuc %s raw %s"  %(i, ind, snp, nuc, self.genos[indiv][self.snplist[snp]]))
                       print(lin)
 
   def export_nexus(self,filename,imp=True):
@@ -144,7 +141,7 @@ class Chromosome:
     import math
     outfi=open(prefix+chrominp,'w')
     outfi.write('0\n')
-    outfi.write(str(self.numinds)+'\n')
+    outfi.write(str(len(self.indivs)+'\n')
     outfi.write(str(len(self.snplist))+'\n')
     outfi.write('P')
     if donor:
@@ -366,8 +363,8 @@ def slider(chrom, prefix, window):
         outdict[lin.split()[-1]]=(float(lin.split()[1]),float(lin.split()[2]))
       ax=fig.add_subplot(n,1,i+1)
       ax.set_title=(str(start))
-      ax.set_xlim(-0.75,0.75)
-      ax.set_ylim(-0.75,0.75)
+      ax.set_xlim(-1,1)
+      ax.set_ylim(-1,1)
       ax.text(-0.5,0.45,endloc)
       for item in outdict:
         x,y=outdict[item]
@@ -429,7 +426,7 @@ def post_proc(c,prefix):
   export_fphase(c,phasefi)
   call(["./fastPHASE_MacOSX-Darwin", "-n", "-B", "-T10", "-o%s" %prefix, phasefi])
   import_fphase(c,'%s_haplotypes.out' %prefix)
-  slider(c,"slidetest",len(c.snplist)+5)
+  slider(c,prefix,len(c.snplist)+5)
 
 
 c=Chromosome("big_demo.txt")
