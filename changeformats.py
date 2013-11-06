@@ -2,8 +2,26 @@ import matplotlib.pyplot as plt
 import matplotlib.pylab as pylab
 import gzip
 from subprocess import call
+
+
+
+#BEFOREHAND!
+#STRIP OUT DOUBLE LINES!!
+def strip_dup(inp,out,skip="indels.txt"):
+    fi=open(inp)    
+    oufi=open(out,'w')
+    skips=open(skip).readlines()
+    skipset=set()
+    for item in skips:
+        skipset.add(item.strip())
+    for lin in fi:
+      if lin.split()[1] not in skipset:
+        oufi.write(lin)
+    oufi.close()
+
+
 class Chromosome:
-  def __init__(self,infii,prefix):
+  def __init__(self,infii,prefix,stop=None):
        self.prefix=prefix
        self.infile=infii
        fi=open(infii)
@@ -21,23 +39,26 @@ class Chromosome:
        for num,lii in enumerate(fi):
           lin=lii.strip().split('\t')
           snp=lin[1]
+          ref=lin[2]
           if num==0:
                 self.chrm=lin[0].split('_')[-1]
-          if len({x.strip('/') for x in lin[2:] if x not in ['./','./.']})==2:
+          if len(ref)==1:
+           if len({x.split('/')[0] for x in lin[2:] if x not in ['./','./.']})==2: #strips formatting and tests for varaibility
             self.snplist.append(snp)
-            ref=lin[2]
             self.ref_dict[snp]=ref
             for ii,item in enumerate(lin[3:]):
                 self.genos[ii][snp]=self.translate(ref,item.split('/')[0])
           if len({x.strip('/') for x in lin[2:] if x != './'})>2:
 #            print("Snp %s has more than 2 nucleotides" %snp) 
             self.multihit.append(snp)  
-          if num%1000000==0:
+          if num%100000==0:
             print(num)
+          if stop:
+            if num==stop:
+               break
        self.tripletest()
   def translate(self,ref,val): #this is setting allele in refernce as 0
-    assert ref in ['A','T','G','C'], "ref is not a base: %s" %ref
-    assert val in ['A','T','G','C','.'], "val is not an acceptable value: %s" %val #do I need a test for  
+    assert(set([ref,val]).issubset(set(['A','T','G','C','.'])))
     if val=='.':
       return('?')
     else:
@@ -91,7 +112,6 @@ class Chromosome:
                  else:
                       print("%i indiv %s snp %s nuc %s raw %s"  %(i, ind, snp, nuc, self.genos[indiv][self.snplist[snp]]))
                       print(lin)
-
   def export_nexus(self,filename,imp=True):
       assert(self.impgenos)
       nexfi=open(filename,'w')
@@ -138,32 +158,40 @@ class Chromosome:
              opar.write(lin.replace('example',outstr))
         opar.close()
   def export_chromop(self,prefix,donor=0):
-    import math
-    outfi=open(prefix+chrominp,'w')
-    outfi.write('0\n')
-    outfi.write(str(len(self.indivs)+'\n')
-    outfi.write(str(len(self.snplist))+'\n')
-    outfi.write('P')
-    if donor:
-      assert type(donor)==dict
-      dfi=open(prefix+"dlist",'w')
-      new_indlist=[]
-      for pop in donor:
-          dfi.write(" ".join([pop,len(donor[pop])]))
-          for ind in pop:
-            new_indlist.append(ind)
-      for item in self.indlist:
-          if item not in new_indlist:
-            new_indlist.append(item)
-    for item in self.snplist:
-       outfi.write(' '+str(item))
-    outfi.write('\n')
-    outfi.write('S'*len(self.snplist)+'\n')
-    for ind in self.indivs:
-      for snp in self.impgenos[ind]:
-        outfi.write(self.impgenos[ind][snp])
-      outfi.write('\n')
-    outfi.close()    
+        import math
+        outfi=open(prefix+".chrominp",'w')
+        if donor:
+          assert type(donor)==dict
+          dfi=open(prefix+"dlist",'w')
+          new_indlist=[]
+          for pop in donor:
+              dfi.write(" ".join([pop,str(len(donor[pop])),'\n']))
+              for ind in donor[pop]:
+                new_indlist.append(self.indivs[ind])
+          outfi.write(str(len(new_indlist))+'\n')
+          ii=0
+          for item in self.indorder:
+              if self.indivs[item] not in new_indlist:
+                ii+=1
+                new_indlist.append(self.indivs[item])
+          outfi.write(str(ii)+'\n')
+        else:
+          outfi.write('0\n')
+          outfi.write(str(len(self.indivs))+'\n')
+        outfi.write(str(len(self.snplist))+'\n')
+        outfi.write('P')
+        for item in self.snplist:
+           outfi.write(' '+str(item))
+        outfi.write('\n')
+        outfi.write('S'*len(self.snplist)+'\n')
+        for ind in new_indlist:
+          for snp in self.impgenos[self.rev_indivs[ind]]:
+            outfi.write(self.impgenos[self.rev_indivs[ind]][snp])
+          outfi.write('\n')
+        fi=open(prefix+"chromop.indorder",'w')
+        fi.write('\n'.join(new_indlist))
+        fi.close()
+        outfi.close()    
   def import_copyprobs(self,infile):
     try: 
       call(["gunzip",infile])
@@ -188,7 +216,7 @@ class Chromosome:
       return(color)
   def painter_prep(self):
     self.linesections={}
-    for hap in range(0,self.numinds):
+    for hap in self.copyprob_dict:
         self.linesections[hap]=[]
         y=[int(hap),int(hap)]
         dat=self.copyprob_dict[hap]
@@ -210,23 +238,16 @@ class Chromosome:
         fig = plt.figure()
         ax = fig.add_subplot(111)
         ax.set_ylim([0,self.numinds+1])
-        ax.set_xlim([-1500000,int(self.snplist[-1])])
-        for hap in range(0,self.numinds):
+        ax.set_xlim([-150,int(self.snplist[-1])])
+        for hap in self.linesections:
             for item in self.linesections[hap]:
               if item[-1]>20:
                      ax.plot(item[0],item[1],color=self.colors(item[2]), linewidth=4)
-            ax.plot([-1500000,0],item[1],color=self.colors(hap), linewidth=4)
-            ax.text(-1500000,hap,self.indivs[hap])
+            ax.plot([-150,0],item[1],color=self.colors(hap), linewidth=4)
+#            ax.text(-1500000,hap,self.indivs[hap])
         fig.savefig("%sh%i.pdf"%(outfile,hap))
         print("DOUBLE CHECK THESE COLOU?RS")
-
-
-
-
-
-
-
-def strip_missing(self,snpcutoff1,indcutoff,snpcutoff2):
+  def strip_missing(self,snpcutoff1,indcutoff,snpcutoff2):
     snpcount={snp:0 for snp in self.snplist}
     for ind in self.genos:
          for snp in self.genos[ind]:
@@ -270,8 +291,24 @@ def strip_missing(self,snpcutoff1,indcutoff,snpcutoff2):
 
 
 
+a.export_fphase(a.prefix+".inp")
+
+prefix=a.prefix
+call(["./fastPHASE_MacOSX-Darwin", "-n", "-B", "-T10", "-o%s" %a.prefix, a.prefix+".inp"])
+a.import_fphase(e.prefix+"_haplotypes.out")
+a.export_chromop(a.prefix,donor_dict)
+call(["perl", "makeuniformrecfile.pl", "%s.chrominp" %prefix, "%s.recombfile" %prefix])
+call(["./chromopainter-0.0.4/chromopainter", "-g", "%s.chrominp" %prefix, "-r", "%s.recombfile" %prefix, "-f", "%sdlist"%prefix, "-in","-iM","-i","10", "-j", "-b"])
+a.import_copyprobs(test.chrominp.copyprobsperlocus.out.gz)
 
 
+
+#make donor dict?
+donor_dict={}
+donor_dict['UK']=[49,51,52,53,55,56,57]
+donor_dict['IM']=range(0,10)
+for i in range(58,81):
+    donor_dict[e.indivs[i]]=[i]
 
 
 def  parse_partitions(chrom, partfile,outfile):
