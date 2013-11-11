@@ -285,30 +285,34 @@ class Chromosome:
           pruned_genos2[ind][snp]=self.genos[ind][snp]
     self.genos=pruned_genos2
     self.snplist=list(set(self.snplist)-set(snpdel)-set(snpdel2))
+    self.snplist=sorted(self.snplist, key= lambda x: int(x))
     self.numinds=len(pruned_genos2)
     self.indorder=self.indivs.keys()
     self.indorder.sort()
 
 
-
+a=Chromosome("scaf8_strip.txt","scaf8b",10000000)
+a.strip_missing(0.7,0.7,0.9)
 a.export_fphase(a.prefix+".inp")
-
 prefix=a.prefix
 call(["./fastPHASE_MacOSX-Darwin", "-n", "-B", "-T10", "-o%s" %a.prefix, a.prefix+".inp"])
-a.import_fphase(e.prefix+"_haplotypes.out")
+a.import_fphase(a.prefix+"_haplotypes.out")
 a.export_chromop(a.prefix,donor_dict)
 call(["perl", "makeuniformrecfile.pl", "%s.chrominp" %prefix, "%s.recombfile" %prefix])
 call(["./chromopainter-0.0.4/chromopainter", "-g", "%s.chrominp" %prefix, "-r", "%s.recombfile" %prefix, "-f", "%sdlist"%prefix, "-in","-iM","-i","10", "-j", "-b"])
-a.import_copyprobs(test.chrominp.copyprobsperlocus.out.gz)
-
+a.import_copyprobs("%s.chrominp.copyprobsperlocus.out.gz" %prefix)
+a.painter_prep()
+a.paint("%s.pdf"%prefix)
 
 
 #make donor dict?
 donor_dict={}
-donor_dict['UK']=[49,51,52,53,55,56,57]
+donor_dict['UK']=[51,52,53,56,57]
 donor_dict['IM']=range(0,10)
 for i in range(58,81):
-    donor_dict[e.indivs[i]]=[i]
+  try:
+    donor_dict[a.indivs[i]]=[i]
+  except: pass
 
 
 def  parse_partitions(chrom, partfile,outfile):
